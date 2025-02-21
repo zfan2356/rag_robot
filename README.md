@@ -1,15 +1,18 @@
 # rag_robot
 a easy chat bot based on llm local inference and rag
 
-一. 方案一
+## 一. 方案一
 
-1 . 通过ollama下载本地模型
+### 1 . 通过ollama下载本地模型
 
 ``` shell
 ollama run deepseek-r1:7b
 ```
-
-curl验证一下接口
+可以检查一下是否成功下载了模型
+```shell
+ollama list
+```
+一般如果无端口占用，ollama会在11434上提供服务，本地run的话可以访问 localhost:11434来使用curl验证一下接口
 
 ```shell
 curl http://localhost:11434/api/generate -d '{
@@ -19,7 +22,15 @@ curl http://localhost:11434/api/generate -d '{
 }'
 ```
 
-2 . 构建RAG知识库
+也可以通过接口来访问目前的本地llm
+
+```shell
+curl http://localhost:11434/api/tags
+```
+
+其他一些api，具体可以查ollama官方文档
+
+### 2 . 构建RAG知识库
 
 2.1 知识库准备
 
@@ -62,6 +73,6 @@ retriever = vectorstore.as_retriever()
 qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
 ```
 
-3 . 构建ChatBot
+### 3 . 构建ChatBot
 
 可以选择使用gradio, 来快速搭建前端页面
