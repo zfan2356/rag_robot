@@ -1,0 +1,6 @@
+- name: deepseek-r1:7b
+  id: 0a8c26691023
+  size: 4.7 GB
+- name: llama3.2:latest
+  id: a80c4f17acd5
+  size: 2.0 GB
