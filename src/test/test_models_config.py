@@ -1,6 +1,6 @@
 import pytest
 
-from config import ModelConfig, ModelConfigManager
+from src.config import ModelConfig, ModelConfigManager
 
 
 def test_config_structure():

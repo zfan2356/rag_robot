@@ -1,42 +1,14 @@
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI
 
-from config import ModelConfigManager
+from src.backend.routers import models
+from src.backend.setting import settings
 
-# 初始化配置管理器和FastAPI应用
-config_manager = ModelConfigManager()
-app = FastAPI(title="Model API", version="0.1.0")
+app = FastAPI(title=settings.PROJECT_NAME)
 
-
-class ModelResponse(BaseModel):
-    name: str
-    id: str
-    size: str
+# 注册路由
+app.include_router(models.router)
 
 
-@app.get("/models", response_model=list[ModelResponse])
-def list_models():
-    """获取所有可用模型"""
-    return config_manager.models
-
-
-@app.get("/models/{model_name}", response_model=ModelResponse)
-def get_model(model_name: str):
-    """获取指定模型详情"""
-    model = config_manager.get_model(model_name)
-    if not model:
-        raise HTTPException(status_code=404, detail="Model not found")
-    return model
-
-
-@app.get("/models/check/{model_name}")
-def check_model(model_name: str):
-    """检查模型是否存在"""
-    exists = config_manager.check(model_name)
-    return {"exists": exists, "model_name": model_name}
-
-
-if __name__ == "__main__":
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}

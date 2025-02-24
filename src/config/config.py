@@ -36,12 +36,15 @@ class ModelConfigManager:
         """
         return any(model.name == model_name for model in self.models)
 
-    def get_model(self, model_name: str) -> Optional[ModelConfig]:
+    def get_model(self, model_name: Optional[str] = None) -> Optional[ModelConfig]:
         """
         获取指定名称的模型配置
         :param model_name: 要获取的模型名称
         :return: ModelConfig对象或None
         """
+        if model_name is None:
+            return self.models[0]
+
         for model in self.models:
             if model.name == model_name:
                 return model

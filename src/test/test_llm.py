@@ -1,7 +1,7 @@
 import pytest
 
-from config import ModelConfig
-from llm import LocalBaseLLM
+from src.config import ModelConfig
+from src.llm import LocalBaseLLM
 
 
 def test_local_llm():

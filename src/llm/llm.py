@@ -6,7 +6,7 @@ from langchain_core.language_models.llms import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from pydantic import BaseModel, Field
 
-from config import ModelConfig, ModelConfigManager
+from src.config import ModelConfig, ModelConfigManager
 
 
 class LocalBaseLLM(BaseLLM, BaseModel):

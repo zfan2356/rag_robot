@@ -167,24 +167,3 @@ class OllamaManager:
         except Exception as e:
             print(f"下载过程中发生错误：{str(e)}")
             return False
-
-
-# 使用示例
-if __name__ == "__main__":
-    manager = OllamaManager(target_model="deepseek-r1:7b")
-
-    # 检查状态
-    print("初始状态:", manager.check_status())
-
-    # 启动服务
-    if manager.start_service():
-        print("服务启动成功")
-
-        # 确保模型可用
-        if manager.ensure_model():
-            print("模型已就绪")
-            print("最终状态:", manager.check_status())
-        else:
-            print("无法获取模型")
-    else:
-        print("服务启动失败")
