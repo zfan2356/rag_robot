@@ -10,4 +10,4 @@ def test_local_llm():
     llm = LocalBaseLLM(
         model=model_config,
     )
-    print(llm("hello"))
+    print(llm.invoke("hello"))
