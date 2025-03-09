@@ -1,18 +1,19 @@
 # rag_robot
 a easy chat bot based on llm local inference and rag
 
-## 一. 方案一
+## 一. Solution 1
 
-### 1 . 通过ollama下载本地模型
+### 1 . Download Local Model via Ollama
 
 ``` shell
 ollama run deepseek-r1:7b
 ```
-可以检查一下是否成功下载了模型
+Verify model download status:
+
 ```shell
 ollama list
 ```
-一般如果无端口占用，ollama会在11434上提供服务，本地run的话可以访问 localhost:11434来使用curl验证一下接口
+Ollama services typically run on port 11434. To test the API locally:
 
 ```shell
 curl http://localhost:11434/api/generate -d '{
@@ -22,28 +23,29 @@ curl http://localhost:11434/api/generate -d '{
 }'
 ```
 
-也可以通过接口来访问目前的本地llm
+Check available models:
 
 ```shell
 curl http://localhost:11434/api/tags
 ```
 
-其他一些api，具体可以查ollama官方文档
+(Refer to Ollama official documentation for more APIs)
 
-### 2 . 构建RAG知识库
+### 2 . Build RAG Knowledge Base
 
-2.1 知识库准备
+2.1 Knowledge Base Preparation
 
-准备文档，然后使用Huggingface下的Embedding模型
+Prepare documents, Use Hugging Face's embedding models:
+
 ```shell
 ollama run nomic-embed-text
 ```
 
-向量数据库可以选择FAISS/Chroma
+Choose vector databases like FAISS/Chroma
 
-2.2 RAG框架选择
+2.2 RAG Framework Options
 
-例如RAGFLow, 然后配置模型路径指向ollama正在运行的本地模型
+Option 1: Use RAGFlow (configure model endpoint in settings):
 
 ```shell
 {
@@ -54,7 +56,7 @@ ollama run nomic-embed-text
 }
 ```
 
-或者直接langchain自定义开发
+Option 2: Custom development with LangChain:
 
 ```python
 from langchain_ollama import ChatOllama
@@ -73,6 +75,15 @@ retriever = vectorstore.as_retriever()
 qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
 ```
 
-### 3 . 构建ChatBot
+### 3. DataBase
 
-可以选择使用gradio, 来快速搭建前端页面
+choose mysql, and create two tables:
+
+- **prompt_template_table**: manage custom prompt templates by users.
+
+- **document_table**: stores RAG-based documents uploaded by users.
+
+
+### 4 . Build ChatBot Interface
+
+Use Gradio for rapid frontend development?

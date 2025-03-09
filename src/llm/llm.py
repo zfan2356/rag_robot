@@ -1,9 +1,12 @@
-from typing import Any, List, Optional
+import json
+from typing import Any, AsyncGenerator, Generator, List, Optional
 
 import requests
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models import BaseLLM
+from langchain_core.messages import BaseMessage
 from langchain_core.outputs import Generation, LLMResult
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, model_validator
 
 from src.config import ModelConfig, ModelConfigManager
@@ -56,52 +59,96 @@ class LocalBaseLLM(BaseLLM):
         """生成方法改造 (返回 LLMResult 而不是 ChatResult)"""
         generations = []
         for prompt in prompts:
-            params = self._build_request_params(prompt, **kwargs)
-            response = self._send_request(params)
-            generations.append([Generation(text=self._parse_response(response))])
+            stream = self._stream_response(prompt, **kwargs)
+            full_response = "".join([chunk for chunk in stream])
+            generations.append([Generation(text=full_response)])
         return LLMResult(generations=generations)
 
-    def _build_request_params(self, prompt: str, **kwargs) -> dict:
+    def stream(
+        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
+    ) -> Generator[str, None, None]:
+        """更新 stream 方法以支持 chain"""
+        yield from self._stream_response(input, **kwargs)
+
+    async def astream(
+        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
+    ) -> AsyncGenerator[str, None]:
+        """实现异步 stream 方法"""
+        for chunk in self.stream(input, config, **kwargs):
+            yield chunk
+
+    def _build_request_params(
+        self, prompt: str, is_stream: bool = False, **kwargs
+    ) -> dict:
         """构建请求参数"""
         return {
             "model": self.model.name,
             "prompt": prompt,
-            "stream": False,
+            "stream": is_stream,
             "temperature": self.temperature,
             "top_p": self.top_p,
             **kwargs,
         }
 
-    def _send_request(self, params: dict) -> dict:
+    def _stream_response(self, prompt: str, **kwargs) -> Generator[str, None, None]:
+        params = self._build_request_params(prompt, True, **kwargs)
+        resp = self._send_request(params, True)
+
+        for line in resp.iter_lines():
+            if line:
+                decode_line = line.decode("utf-8")
+                yield self._parse_stream_chunk(decode_line)
+
+    def _send_request(
+        self,
+        params: dict,
+        is_stream: bool = False,
+    ) -> requests.Response:
         """发送请求并处理响应"""
         response = requests.post(
-            f"{self.base_url}/api/generate", json=params, timeout=60
+            f"{self.base_url}/api/generate",
+            json=params,
+            timeout=60,
+            stream=is_stream,
         )
         response.raise_for_status()
-        return response.json()
+        return response
 
-    def _parse_response(self, response: dict) -> str:
-        """解析响应数据"""
-        return response["response"]
+    def _parse_stream_chunk(self, chunk: str) -> str:
+        """解析流式数据块"""
+        try:
+            return json.loads(chunk).get("response", "")
+        except json.decoder.JSONDecodeError:
+            return ""
 
     @property
     def _llm_type(self) -> str:
         return "custom_ollama"
 
+    def invoke(
+        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
+    ) -> str:
+        """实现 invoke 方法以支持 chain 操作"""
+        # 处理 ChatPromptValue 类型的输入
+        if hasattr(input, "messages"):
+            # 将所有消息内容合并成一个字符串
+            prompt = "\n".join(msg.content for msg in input.messages)
+        elif isinstance(input, (list, tuple)) and all(
+            isinstance(m, BaseMessage) for m in input
+        ):
+            # 处理消息列表
+            prompt = "\n".join(msg.content for msg in input)
+        elif isinstance(input, str):
+            prompt = input
+        else:
+            raise ValueError(f"Unsupported input type: {type(input)}")
 
-if __name__ == "__main__":
-    model_config = ModelConfig(name="deepseek-r1:7b", id="0a8c26691023", size="4.7 GB")
-    llm = LocalBaseLLM(model=model_config)
+        print(f"prompt: {prompt}")
+        result = self._generate([prompt], **kwargs)
+        return result.generations[0][0].text
 
-    for i in range(1, 4):
-        # 获取用户输入
-        user_input = input(f"\n[第 {i} 次对话] 请输入提示词: ")
-
-        # 执行模型推理
-        response = llm(user_input)
-
-        # 输出格式化结果
-        print(f"\n[模型回复 {i}]", flush=True)
-        print("-" * 40, flush=True)
-        print(response, flush=True)
-        print("-" * 40, flush=True)
+    async def ainvoke(
+        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
+    ) -> str:
+        """实现异步 invoke 方法"""
+        return self.invoke(input, config, **kwargs)
