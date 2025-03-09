@@ -87,3 +87,11 @@ choose mysql, and create two tables:
 ### 4 . Build ChatBot Interface
 
 Use Gradio for rapid frontend development?
+
+
+
+### TODO:
+
+llm: 完成了基本功能，可以做到流式回复与普通回复，并且支持 | 链式调用
+prompt: 已经调通了链式调用，但是与dao层的交互还没测试
+fastapi：还没集成prompt 接口
