@@ -5,15 +5,14 @@ import pytest
 
 from src.dao.prompt import PromptDAO, PromptTemplate
 
-# 从环境变量获取 MySQL 测试配置，如果没有则使用默认值
-TEST_DB_CONFIG = {
+DB_CONFIG = {
     "user": "root",
     "password": "123456",
     "host": "localhost",
     "database": "rag_robot",
 }
 
-TEST_DB_URL = f"mysql+pymysql://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}@{TEST_DB_CONFIG['host']}/{TEST_DB_CONFIG['database']}"
+DB_URL = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{DB_CONFIG['database']}"
 
 
 @pytest.fixture(scope="session")
@@ -23,16 +22,16 @@ def setup_test_db():
 
     # 连接 MySQL 服务器（不指定数据库）
     conn = pymysql.connect(
-        host=TEST_DB_CONFIG["host"],
-        user=TEST_DB_CONFIG["user"],
-        password=TEST_DB_CONFIG["password"],
+        host=DB_CONFIG["host"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
     )
 
     try:
         with conn.cursor() as cursor:
             # 创建测试数据库
-            cursor.execute(f"DROP DATABASE IF EXISTS {TEST_DB_CONFIG['database']}")
-            cursor.execute(f"CREATE DATABASE {TEST_DB_CONFIG['database']}")
+            cursor.execute(f"DROP DATABASE IF EXISTS {DB_CONFIG['database']}")
+            cursor.execute(f"CREATE DATABASE {DB_CONFIG['database']}")
         conn.commit()
     finally:
         conn.close()
@@ -41,7 +40,7 @@ def setup_test_db():
 @pytest.fixture
 def dao(setup_test_db):
     """创建 DAO 测试实例"""
-    dao_instance = PromptDAO(db_url=TEST_DB_URL)
+    dao_instance = PromptDAO(db_url=DB_URL)
     yield dao_instance
 
     # 测试后清理数据

@@ -105,9 +105,21 @@ Additionally, docker/docker-compose.yml can be used to build containers includin
 
 ```shell
 docker-compose -f docker/docker-compose.yml up -d
+
+# 停止所有服务
+docker-compose -f docker/docker-compose.yml stop
+
+# 启动所有服务
+docker-compose -f docker/docker-compose.yml start
+
+# 重启所有服务
+docker-compose -f docker/docker-compose.yml restart
+
+# 停止并删除所有服务（包括网络，但不包括数据卷）
+docker-compose -f docker/docker-compose.yml down
 ```
 
-run container
+use the above commands to run container, you can run `docker ps` to check if composed container is running
 
 
 ### TODO:

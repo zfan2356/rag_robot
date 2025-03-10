@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: ../Dockerfile
+      dockerfile: Dockerfile
     container_name: rag_robot
     environment:
       - MYSQL_HOST=mysql
