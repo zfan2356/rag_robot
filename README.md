@@ -89,6 +89,26 @@ choose mysql, and create two tables:
 Use Gradio for rapid frontend development?
 
 
+### 5. Docker
+
+Use Dockerfile to build the backend application.
+
+```shell
+# build
+docker build -t rag_robot -f Dockerfile .
+# run backend app image
+docker run -it -p 8000:8000 rag_robot
+```
+you can visit `http://0.0.0.0:8000/docs` to test if it works properly
+
+Additionally, docker/docker-compose.yml can be used to build containers including MySQL.
+
+```shell
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+run container
+
 
 ### TODO:
 

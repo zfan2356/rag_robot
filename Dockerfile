@@ -34,14 +34,14 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # 复制应用代码
-COPY ./app /app/app
+COPY ./src /app/src
 
 # 暴露端口
 EXPOSE 8000
 
 # 启动命令（根据实际需要选择）
 # 基础启动方式：
-CMD ["uvicorn", "src.backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.bot_app.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # 生产推荐启动方式（需要安装 gunicorn）：
 # CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000", "--workers", "4"]

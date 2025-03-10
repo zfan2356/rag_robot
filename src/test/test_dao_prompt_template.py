@@ -7,10 +7,10 @@ from src.dao.prompt import PromptDAO, PromptTemplate
 
 # 从环境变量获取 MySQL 测试配置，如果没有则使用默认值
 TEST_DB_CONFIG = {
-    "user": os.getenv("TEST_MYSQL_USER", "test_user"),
-    "password": os.getenv("TEST_MYSQL_PASSWORD", "test_password"),
-    "host": os.getenv("TEST_MYSQL_HOST", "localhost"),
-    "database": os.getenv("TEST_MYSQL_DB", "test_prompts"),
+    "user": "root",
+    "password": "123456",
+    "host": "localhost",
+    "database": "rag_robot",
 }
 
 TEST_DB_URL = f"mysql+pymysql://{TEST_DB_CONFIG['user']}:{TEST_DB_CONFIG['password']}@{TEST_DB_CONFIG['host']}/{TEST_DB_CONFIG['database']}"

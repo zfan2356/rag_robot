@@ -3,8 +3,8 @@ from langchain.chains.llm import LLMChain
 from langchain.memory import ConversationBufferMemory
 from starlette.responses import StreamingResponse
 
-from src.backend.schemas import *
-from src.backend.utils import get_logger
+from src.bot_app.schemas import *
+from src.bot_app.utils import get_logger
 from src.config import ModelConfigManager
 from src.llm import AsyncLocalBaseLLM
 

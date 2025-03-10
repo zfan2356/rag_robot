@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from src.backend.routers import models
-from src.backend.setting import settings
+from src.bot_app.routers import models
+from src.bot_app.setting import settings
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

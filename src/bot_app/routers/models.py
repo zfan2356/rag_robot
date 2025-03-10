@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import StreamingResponse
 
-from src.backend.schemas import *
-from src.backend.utils import get_logger
+from src.bot_app.schemas import *
+from src.bot_app.utils import get_logger
 from src.config import ModelConfigManager
-from src.llm import AsyncLocalBaseLLM
 
 """
 查询model基本信息
