@@ -83,6 +83,11 @@ choose mysql, and create two tables:
 
 - **document_table**: stores RAG-based documents uploaded by users.
 
+```shell
+docker exec -it mysql mysql -uroot -p123456
+```
+
+
 
 ### 4 . Build ChatBot Interface
 
@@ -104,21 +109,14 @@ you can visit `http://0.0.0.0:8000/docs` to test if it works properly
 Additionally, docker/docker-compose.yml can be used to build containers including MySQL.
 
 ```shell
-docker-compose -f docker/docker-compose.yml up -d
-
-# 停止所有服务
-docker-compose -f docker/docker-compose.yml stop
-
-# 启动所有服务
-docker-compose -f docker/docker-compose.yml start
-
-# 重启所有服务
-docker-compose -f docker/docker-compose.yml restart
-
-# 停止并删除所有服务（包括网络，但不包括数据卷）
+# remove
 docker-compose -f docker/docker-compose.yml down
-```
+# remove containers and volumes
+docker-compose -f docker/docker-compose.yml down -v
 
+# create and start service
+docker-compose -f docker/docker-compose.yml up -d
+```
 use the above commands to run container, you can run `docker ps` to check if composed container is running
 
 
