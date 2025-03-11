@@ -122,6 +122,17 @@ use the above commands to run container, you can run `docker ps` to check if com
 
 ### TODO:
 
-llm: 完成了基本功能，可以做到流式回复与普通回复，并且支持 | 链式调用
-prompt: 已经调通了链式调用，但是与dao层的交互还没测试
-fastapi：还没集成prompt 接口
+llm: 基本功能√，流式回复与普通回复√，支持 | 链式调用 √，test √
+
+docker: compose √，init mysql √
+
+prompt: 链式调用√，dao层交互√， test √
+
+docs: dao层交互 x， test x
+
+fastapi：
+
+- model basic info： √
+- model conversation：todo
+- prompt crud: todo
+- docs crud: todo

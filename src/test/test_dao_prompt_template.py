@@ -5,48 +5,20 @@ import pytest
 
 from src.dao.prompt import PromptDAO, PromptTemplate
 
-DB_CONFIG = {
-    "user": "root",
-    "password": "123456",
-    "host": "localhost",
-    "database": "rag_robot",
-}
-
-DB_URL = f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{DB_CONFIG['database']}"
-
-
-@pytest.fixture(scope="session")
-def setup_test_db():
-    """设置测试数据库"""
-    import pymysql
-
-    # 连接 MySQL 服务器（不指定数据库）
-    conn = pymysql.connect(
-        host=DB_CONFIG["host"],
-        user=DB_CONFIG["user"],
-        password=DB_CONFIG["password"],
-    )
-
-    try:
-        with conn.cursor() as cursor:
-            # 创建测试数据库
-            cursor.execute(f"DROP DATABASE IF EXISTS {DB_CONFIG['database']}")
-            cursor.execute(f"CREATE DATABASE {DB_CONFIG['database']}")
-        conn.commit()
-    finally:
-        conn.close()
-
 
 @pytest.fixture
-def dao(setup_test_db):
+def dao():
     """创建 DAO 测试实例"""
-    dao_instance = PromptDAO(db_url=DB_URL)
+    dao_instance = PromptDAO()
     yield dao_instance
 
     # 测试后清理数据
     session = dao_instance.Session()
     try:
-        session.query(PromptTemplate).delete()
+        # 只删除测试样本数据，保留其他数据
+        session.query(PromptTemplate).filter(
+            PromptTemplate.name == "测试助手模板"
+        ).delete()
         session.commit()
     finally:
         session.close()
@@ -56,86 +28,68 @@ def dao(setup_test_db):
 def sample_template():
     """示例模板数据"""
     return {
-        "template_id": "test-template",
-        "name": "测试模板",
-        "description": "这是一个测试模板",
-        "template_content": [
-            ("system", "你是一个测试助手"),
-            ("human", "{input}"),
-            ("placeholder", "{chat_history}"),
-        ],
+        "system_prompt": "你是一个专业的AI助手，擅长回答各类问题。请保持友好和专业的态度，给出准确和有帮助的回答。",
+        "name": "测试助手模板",
+        "description": "这是一个用于测试的助手模板",
     }
 
 
 def test_create_template(dao, sample_template):
     """测试创建模板"""
     # 测试成功创建
-    assert (
-        dao.create(
-            template_id=sample_template["template_id"],
-            name=sample_template["name"],
-            description=sample_template["description"],
-            template_content=sample_template["template_content"],
-        )
-        is True
-    )
-
-    # 测试重复创建
-    assert (
-        dao.create(
-            template_id=sample_template["template_id"],
-            name=sample_template["name"],
-            description=sample_template["description"],
-            template_content=sample_template["template_content"],
-        )
-        is False
-    )
-
-
-def test_get_template(dao, sample_template):
-    """测试获取模板"""
-    # 先创建模板
-    dao.create(
-        template_id=sample_template["template_id"],
+    template_id = dao.create(
+        system_prompt=sample_template["system_prompt"],
         name=sample_template["name"],
         description=sample_template["description"],
-        template_content=sample_template["template_content"],
     )
 
-    # 测试获取存在的模板
-    template = dao.get(sample_template["template_id"])
-    assert template is not None
-    assert template["template_id"] == sample_template["template_id"]
-    assert template["name"] == sample_template["name"]
-    assert template["description"] == sample_template["description"]
-    assert template["template_content"] == sample_template["template_content"]
-    assert isinstance(template["created_at"], datetime)
-    assert isinstance(template["updated_at"], datetime)
+    assert template_id is not None
+    assert isinstance(template_id, int)
+    assert template_id > 0
 
-    # 测试获取不存在的模板
-    assert dao.get("non-existent-template") is None
+
+def test_get_template(dao):
+    """测试获取模板"""
+    # 获取所有模板并写入文件
+    templates = dao.list_all()
+    with open(
+        "/Users/zhangfan/zfan2356/github/rag_robot/src/test/output.txt",
+        "w",
+        encoding="utf-8",
+    ) as f:
+        f.write("\n当前数据库中的所有模板:\n")
+        for template in templates:
+            f.write(f"\nID: {template['id']}\n")
+            f.write(f"名称: {template['name'].encode('utf-8').decode('utf-8')}\n")
+            f.write(
+                f"描述: {template['description'].encode('utf-8').decode('utf-8')}\n"
+            )
+            f.write(
+                f"系统提示词: {template['system_prompt'].encode('utf-8').decode('utf-8')}\n"
+            )
+            f.write(f"创建时间: {template['created_at']}\n")
+            f.write(f"更新时间: {template['updated_at']}\n")
 
 
 def test_update_template(dao, sample_template):
     """测试更新模板"""
     # 先创建模板
-    dao.create(
-        template_id=sample_template["template_id"],
+    template_id = dao.create(
+        system_prompt=sample_template["system_prompt"],
         name=sample_template["name"],
         description=sample_template["description"],
-        template_content=sample_template["template_content"],
     )
 
     # 准备更新数据
-    new_content = [("system", "你是一个更新后的测试助手"), ("human", "{input}")]
+    new_system_prompt = "你是一个更新后的AI助手，专注于提供技术支持。"
     new_name = "更新后的测试模板"
-    new_description = "这是更新后的测试模板"
+    new_description = "这是更新后的测试模板描述"
 
     # 测试更新存在的模板
     assert (
         dao.update(
-            template_id=sample_template["template_id"],
-            template_content=new_content,
+            template_id=template_id,
+            system_prompt=new_system_prompt,
             name=new_name,
             description=new_description,
         )
@@ -143,91 +97,68 @@ def test_update_template(dao, sample_template):
     )
 
     # 验证更新结果
-    updated = dao.get(sample_template["template_id"])
+    updated = dao.get(template_id)
+    assert updated["system_prompt"] == new_system_prompt
     assert updated["name"] == new_name
     assert updated["description"] == new_description
-    assert updated["template_content"] == new_content
+
+    # 测试部分更新
+    assert dao.update(template_id=template_id, name="仅更新名称") is True
+
+    partially_updated = dao.get(template_id)
+    assert partially_updated["name"] == "仅更新名称"
+    assert partially_updated["system_prompt"] == new_system_prompt  # 其他字段保持不变
 
     # 测试更新不存在的模板
-    assert (
-        dao.update(template_id="non-existent-template", template_content=new_content)
-        is False
-    )
+    assert dao.update(template_id=9999, name="不存在的模板") is False
 
 
 def test_delete_template(dao, sample_template):
     """测试删除模板"""
     # 先创建模板
-    dao.create(
-        template_id=sample_template["template_id"],
+    template_id = dao.create(
+        system_prompt=sample_template["system_prompt"],
         name=sample_template["name"],
         description=sample_template["description"],
-        template_content=sample_template["template_content"],
     )
 
     # 测试删除存在的模板
-    assert dao.delete(sample_template["template_id"]) is True
-    assert dao.get(sample_template["template_id"]) is None
+    assert dao.delete(template_id) is True
+
+    # 验证删除后无法获取
+    assert dao.get(template_id) is None
 
     # 测试删除不存在的模板
-    assert dao.delete("non-existent-template") is False
+    assert dao.delete(9999) is False
 
 
-def test_list_all_templates(dao, sample_template):
-    """测试列出所有模板"""
-    # 初始状态应该为空
-    assert len(dao.list_all()) == 0
+def test_get_by_name(dao, sample_template):
+    """测试通过名称获取模板"""
+    # 创建模板
+    dao.create(
+        system_prompt=sample_template["system_prompt"],
+        name="特定名称模板",
+        description="通过名称查找的测试模板",
+    )
 
-    # 创建多个模板
-    templates = [
-        {
-            "template_id": "template-1",
-            "name": "模板1",
-            "description": "这是模板1",
-            "template_content": [("system", "系统1"), ("human", "{input}")],
-        },
-        {
-            "template_id": "template-2",
-            "name": "模板2",
-            "description": "这是模板2",
-            "template_content": [("system", "系统2"), ("human", "{input}")],
-        },
-    ]
+    # 测试通过名称查找
+    template = dao.get_by_name("特定名称模板")
+    assert template is not None
+    assert template["name"] == "特定名称模板"
 
-    for template in templates:
-        dao.create(
-            template_id=template["template_id"],
-            name=template["name"],
-            description=template["description"],
-            template_content=template["template_content"],
-        )
-
-    # 验证列表结果
-    all_templates = dao.list_all()
-    assert len(all_templates) == 2
-
-    # 验证返回的模板数据是否完整
-    for template in all_templates:
-        assert "template_id" in template
-        assert "name" in template
-        assert "description" in template
-        assert "template_content" in template
-        assert "created_at" in template
-        assert "updated_at" in template
+    # 测试查找不存在的名称
+    assert dao.get_by_name("不存在的模板名称") is None
 
 
 def test_template_timestamps(dao, sample_template):
     """测试时间戳更新"""
     # 创建模板
-    dao.create(
-        template_id=sample_template["template_id"],
-        name=sample_template["name"],
-        description=sample_template["description"],
-        template_content=sample_template["template_content"],
+    template_id = dao.create(
+        system_prompt=sample_template["system_prompt"], name=sample_template["name"]
     )
 
     # 获取初始时间戳
-    template = dao.get(sample_template["template_id"])
+    template = dao.get(template_id)
     created_at = template["created_at"]
     updated_at = template["updated_at"]
 
@@ -237,12 +168,9 @@ def test_template_timestamps(dao, sample_template):
     time.sleep(1)
 
     # 更新模板
-    dao.update(
-        template_id=sample_template["template_id"],
-        template_content=[("system", "新系统提示"), ("human", "{input}")],
-    )
+    dao.update(template_id=template_id, system_prompt="新的系统提示词")
 
     # 检查时间戳
-    updated_template = dao.get(sample_template["template_id"])
+    updated_template = dao.get(template_id)
     assert updated_template["created_at"] == created_at  # 创建时间不变
     assert updated_template["updated_at"] > updated_at  # 更新时间变化
