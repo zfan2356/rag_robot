@@ -128,7 +128,11 @@ docker: compose √，init mysql √
 
 prompt: 链式调用√，dao层交互√， test √
 
-docs: dao层交互 x， test x
+docs: dao层交互 √， test √
+
+context: √
+
+RagRobotLLM: test todo
 
 fastapi：
 
