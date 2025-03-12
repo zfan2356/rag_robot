@@ -16,7 +16,7 @@ def dao():
     session = dao_instance.Session()
     try:
         # 只删除测试样本数据
-        session.query(Document).filter(Document.user == "test_user").delete()
+        session.query(Document).filter(Document.title == "测试文档").delete()
         session.commit()
     finally:
         session.close()
@@ -25,27 +25,13 @@ def dao():
 @pytest.fixture
 def sample_doc():
     """示例文档数据"""
-    return {
-        "user": "test_user",
-        "doc": "这是一个测试文档的内容",
-        "title": "测试文档",
-        "source": "测试来源",
-        "doc_type": "text",
-        "metadata": {"key": "value"},
-    }
+    return {"doc": "这是一个测试文档的内容", "title": "测试文档"}
 
 
 def test_create_document(dao, sample_doc):
     """测试创建文档"""
     # 测试成功创建
-    doc_id = dao.create(
-        user=sample_doc["user"],
-        doc=sample_doc["doc"],
-        title=sample_doc["title"],
-        source=sample_doc["source"],
-        doc_type=sample_doc["doc_type"],
-        metadata=sample_doc["metadata"],
-    )
+    doc_id = dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
 
     assert doc_id is not None
     assert isinstance(doc_id, int)
@@ -55,14 +41,11 @@ def test_create_document(dao, sample_doc):
 def test_get_document(dao, sample_doc):
     """测试获取文档"""
     # 先创建文档
-    doc_id = dao.create(
-        user=sample_doc["user"], doc=sample_doc["doc"], title=sample_doc["title"]
-    )
+    doc_id = dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
 
     # 测试获取存在的文档
     doc = dao.get(doc_id)
     assert doc is not None
-    assert doc["user"] == sample_doc["user"]
     assert doc["doc"] == sample_doc["doc"]
     assert doc["title"] == sample_doc["title"]
 
@@ -73,9 +56,7 @@ def test_get_document(dao, sample_doc):
 def test_update_document(dao, sample_doc):
     """测试更新文档"""
     # 先创建文档
-    doc_id = dao.create(
-        user=sample_doc["user"], doc=sample_doc["doc"], title=sample_doc["title"]
-    )
+    doc_id = dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
 
     # 准备更新数据
     new_doc = "更新后的文档内容"
@@ -103,99 +84,55 @@ def test_update_document(dao, sample_doc):
 def test_delete_document(dao, sample_doc):
     """测试删除文档"""
     # 先创建文档
-    doc_id = dao.create(user=sample_doc["user"], doc=sample_doc["doc"])
+    doc_id = dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
 
-    # 测试软删除
+    # 测试删除存在的文档
     assert dao.delete(doc_id) is True
-    assert dao.get(doc_id) is None
-
-    # 测试硬删除
-    assert dao.hard_delete(doc_id) is True
     assert dao.get(doc_id) is None
 
     # 测试删除不存在的文档
     assert dao.delete(9999) is False
-    assert dao.hard_delete(9999) is False
 
 
 def test_list_documents(dao, sample_doc):
     """测试文档列表"""
     # 创建测试文档
-    dao.create(user=sample_doc["user"], doc=sample_doc["doc"], is_processed=True)
-    dao.create(user=sample_doc["user"], doc="未处理的文档", is_processed=False)
+    dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
+    dao.create(doc="另一个文档", title="标题2")
 
     # 测试获取所有文档
     all_docs = dao.list_all()
     assert len(all_docs) >= 2
-
-    # 测试获取已处理文档
-    processed_docs = dao.list_all(processed_only=True)
-    assert all(doc["is_processed"] for doc in processed_docs)
-
-    # 测试获取未处理文档
-    unprocessed_docs = dao.list_all(processed_only=False)
-    assert all(not doc["is_processed"] for doc in unprocessed_docs)
-
-
-def test_get_by_user(dao, sample_doc):
-    """测试获取用户文档"""
-    # 创建测试文档
-    dao.create(user=sample_doc["user"], doc=sample_doc["doc"])
-    dao.create(user="other_user", doc="其他用户的文档")
-
-    # 测试获取特定用户的文档
-    user_docs = dao.get_by_user(sample_doc["user"])
-    assert all(doc["user"] == sample_doc["user"] for doc in user_docs)
+    for doc in all_docs:
+        assert "id" in doc
+        assert "title" in doc
+        assert "doc_preview" in doc
+        assert "created_at" in doc
+        assert "updated_at" in doc
 
 
 def test_search_documents(dao, sample_doc):
     """测试搜索文档"""
     # 创建测试文档
-    dao.create(
-        user=sample_doc["user"],
-        doc="包含关键词的文档内容",
-        title="测试搜索",
-        doc_type="text",
-    )
+    dao.create(doc="包含关键词的文档内容", title="测试搜索")
 
     # 测试关键词搜索
     keyword_results = dao.search_documents(keyword="关键词")
     assert len(keyword_results) > 0
 
-    # 测试按类型搜索
-    type_results = dao.search_documents(doc_type="text")
-    assert all(doc["doc_type"] == "text" for doc in type_results)
-
-    # 测试按用户搜索
-    user_results = dao.search_documents(user=sample_doc["user"])
-    assert all(doc["user"] == sample_doc["user"] for doc in user_results)
-
-
-def test_mark_as_processed(dao, sample_doc):
-    """测试标记文档为已处理"""
-    # 创建未处理的文档
-    doc_id = dao.create(
-        user=sample_doc["user"], doc=sample_doc["doc"], is_processed=False
-    )
-
-    # 标记为已处理
-    assert dao.mark_as_processed(doc_id) is True
-
-    # 验证状态
-    doc = dao.get(doc_id)
-    assert doc["is_processed"] is True
+    # 测试空关键词搜索
+    all_results = dao.search_documents()
+    assert len(all_results) > 0
 
 
 def test_document_count(dao, sample_doc):
     """测试文档计数"""
     # 创建测试文档
-    dao.create(user=sample_doc["user"], doc=sample_doc["doc"], is_processed=True)
-    dao.create(user=sample_doc["user"], doc="未处理文档", is_processed=False)
+    dao.create(doc=sample_doc["doc"], title=sample_doc["title"])
+    dao.create(doc="另一个文档", title="标题2")
 
     # 获取计数
     counts = dao.get_document_count()
     assert isinstance(counts, dict)
     assert "total" in counts
-    assert "processed" in counts
-    assert "unprocessed" in counts
-    assert counts["total"] == counts["processed"] + counts["unprocessed"]
+    assert counts["total"] >= 2
