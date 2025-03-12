@@ -4,12 +4,15 @@ from typing import Any, AsyncGenerator, Generator, List, Optional
 import requests
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 from langchain_core.language_models import BaseLLM
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.outputs import Generation, LLMResult
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, model_validator
 
 from src.config import ModelConfig, ModelConfigManager
+from src.llm.context import ContextManager
+from src.llm.prompt import PromptManager
 
 
 class LocalBaseLLM(BaseLLM):
@@ -152,3 +155,118 @@ class LocalBaseLLM(BaseLLM):
     ) -> str:
         """实现异步 invoke 方法"""
         return self.invoke(input, config, **kwargs)
+
+
+class RagRobotLLM:
+    def __init__(
+        self,
+        context_manager: ContextManager,
+        llm: LocalBaseLLM,
+    ):
+        """初始化 RagRobotLLM
+
+        Args:
+            context_manager: 上下文管理器
+            llm: 本地LLM实例
+        """
+        self.context_manager = context_manager
+        self.llm = llm
+
+    def clear_history(self):
+        """清除对话历史记录"""
+        self.context_manager.clear_history()
+
+    def generate(self, input: str) -> str:
+        """生成响应
+
+        Args:
+            input: 用户输入
+
+        Returns:
+            str: LLM响应结果
+        """
+        # 添加用户输入到历史记录
+        self.context_manager.pre_add_user_message()
+
+        # 获取包含历史记录的提示词模板并调用LLM
+        prompt = self.context_manager.get_prompt_template()
+        result = (prompt | self.llm).invoke({"input": input})
+
+        # 添加助手回复到历史记录
+        self.context_manager.after_add_user_message(input)
+        self.context_manager.add_assistant_message(result)
+
+        return result
+
+    def stream_generate(self, input: str) -> Generator[str, None, None]:
+        """流式生成响应
+
+        Args:
+            input: 用户输入
+
+        Returns:
+            Generator[str, None, None]: 生成器，用于流式返回响应
+        """
+        # 添加用户输入到历史记录
+        self.context_manager.pre_add_user_message()
+
+        # 获取包含历史记录的提示词模板
+        prompt = self.context_manager.get_prompt_template()
+
+        response_chunks = []
+        # 调用LLM的流式生成方法
+        for chunk in (prompt | self.llm).stream({"input": input}):
+            response_chunks.append(chunk)
+            yield chunk
+
+        self.context_manager.after_add_user_message(input)
+        # 添加完整的助手回复到历史记录
+        self.context_manager.add_assistant_message("".join(response_chunks))
+
+    async def agenerate(self, input: str) -> str:
+        """异步生成响应
+
+        Args:
+            input: 用户输入
+
+        Returns:
+            str: LLM响应结果
+        """
+        # 添加用户输入到历史记录
+        self.context_manager.pre_add_user_message()
+
+        # 获取包含历史记录的提示词模板
+        prompt = self.context_manager.get_prompt_template()
+
+        response = await (prompt | self.llm).ainvoke({"input": input})
+
+        # 添加助手回复到历史记录
+        self.context_manager.after_add_user_message(input)
+        self.context_manager.add_assistant_message(response)
+
+        return response
+
+    async def astream_generate(self, input: str) -> AsyncGenerator[str, None]:
+        """异步流式生成响应
+
+        Args:
+            input: 用户输入
+
+        Returns:
+            AsyncGenerator[str, None]: 异步生成器，用于流式返回响应
+        """
+        # 添加用户输入到历史记录
+        self.context_manager.pre_add_user_message()
+
+        # 获取包含历史记录的提示词模板
+        prompt = self.context_manager.get_prompt_template()
+
+        response_chunks = []
+        # 调用LLM的异步流式生成方法
+        async for chunk in (prompt | self.llm).astream({"input": input}):
+            response_chunks.append(chunk)
+            yield chunk
+
+        # 添加完整的助手回复到历史记录
+        self.context_manager.after_add_user_message(input)
+        self.context_manager.add_assistant_message("".join(response_chunks))

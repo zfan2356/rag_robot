@@ -1,86 +1,95 @@
 from typing import Any, Dict, List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
-
 from src.dao.prompt import PromptDAO
 
 
 class PromptManager:
-    def __init__(self, db_url: str = "mysql+pymysql://user:password@localhost/db_name"):
+    def __init__(self, db_url: str = "mysql+pymysql://root:123456@localhost/rag_robot"):
         """初始化 PromptManager"""
         self.dao = PromptDAO(db_url)
 
     def create_template(
         self,
-        template_id: str,
-        name: str,
-        template_content: List[tuple],
-        description: str = "",
-    ) -> Optional[ChatPromptTemplate]:
-        """创建新的提示词模板"""
-        if self.dao.create(template_id, name, template_content, description):
-            return ChatPromptTemplate(template_content)
-        return None
+        system_prompt: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Optional[int]:
+        """创建新的提示词模板
 
-    def get_template(self, template_id: str) -> Optional[ChatPromptTemplate]:
-        """获取提示词模板"""
-        template_data = self.dao.get(template_id)
-        if template_data:
-            return ChatPromptTemplate(template_data["template_content"])
-        return None
+        Args:
+            system_prompt: 系统提示词
+            name: 模板名称
+            description: 模板描述
+
+        Returns:
+            Optional[int]: 新创建的模板ID
+        """
+        return self.dao.create(
+            system_prompt=system_prompt, name=name, description=description
+        )
+
+    def get_template(self, template_id: int) -> Optional[Dict[str, Any]]:
+        """获取提示词模板
+
+        Args:
+            template_id: 模板ID
+
+        Returns:
+            Optional[Dict[str, Any]]: 模板信息，不存在则返回None
+        """
+        return self.dao.get(template_id)
 
     def update_template(
         self,
-        template_id: str,
-        template_content: List[tuple],
+        template_id: int,
+        system_prompt: Optional[str] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
-    ) -> Optional[ChatPromptTemplate]:
-        """更新提示词模板"""
-        if self.dao.update(template_id, template_content, name, description):
-            return ChatPromptTemplate(template_content)
-        return None
+    ) -> bool:
+        """更新提示词模板
 
-    def delete_template(self, template_id: str) -> bool:
-        """删除提示词模板"""
+        Args:
+            template_id: 模板ID
+            system_prompt: 系统提示词
+            name: 模板名称
+            description: 模板描述
+
+        Returns:
+            bool: 更新是否成功
+        """
+        return self.dao.update(
+            template_id=template_id,
+            system_prompt=system_prompt,
+            name=name,
+            description=description,
+        )
+
+    def delete_template(self, template_id: int) -> bool:
+        """删除提示词模板
+
+        Args:
+            template_id: 模板ID
+
+        Returns:
+            bool: 删除是否成功
+        """
         return self.dao.delete(template_id)
 
     def list_templates(self) -> List[Dict[str, Any]]:
-        """列出所有提示词模板"""
+        """列出所有提示词模板
+
+        Returns:
+            List[Dict[str, Any]]: 模板列表
+        """
         return self.dao.list_all()
 
-    def format_history(self, history: List[Dict[str, Any]]) -> List[Any]:
-        """格式化对话历史"""
-        formatted_messages = []
-        for message in history:
-            if message["role"] == "user":
-                formatted_messages.append(HumanMessage(content=message["content"]))
-            elif message["role"] == "assistant":
-                formatted_messages.append(AIMessage(content=message["content"]))
-        return formatted_messages
+    def get_template_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """通过名称获取模板
 
+        Args:
+            name: 模板名称
 
-# 使用示例
-if __name__ == "__main__":
-    # 初始化管理器
-    prompt_manager = PromptManager("mysql+pymysql://user:password@localhost/prompts")
-
-    # 创建默认模板
-    default_template = [
-        ("system", "你是一个专业的AI助手，擅长回答各类问题。"),
-        ("placeholder", "{chat_history}"),
-        ("human", "{input}"),
-    ]
-
-    template = prompt_manager.create_template(
-        template_id="default",
-        name="默认对话模板",
-        template_content=default_template,
-        description="通用对话模板",
-    )
-
-    if template:
-        # 使用模板
-        messages = template.format_messages(input="你好", chat_history=[])
-        print(messages)
+        Returns:
+            Optional[Dict[str, Any]]: 模板信息，不存在则返回None
+        """
+        return self.dao.get_by_name(name)
