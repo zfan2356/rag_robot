@@ -137,6 +137,10 @@ RagRobotLLM: test todo
 fastapi：
 
 - model basic info： √
-- model conversation：todo
-- prompt crud: todo
-- docs crud: todo
+- model conversation：√
+- prompt crud: √
+- docs crud: √
+- gradio conversation: √
+- gradio model condig/doc/prompt choose: todo
+
+RAG：todo
