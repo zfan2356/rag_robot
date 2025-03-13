@@ -151,7 +151,7 @@ class LocalBaseLLM(BaseLLM):
         return result.generations[0][0].text
 
     async def ainvoke(
-        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
+        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
     ) -> str:
         """实现异步 invoke 方法"""
         return self.invoke(input, config, **kwargs)
@@ -190,7 +190,9 @@ class RagRobotLLM:
 
         # 获取包含历史记录的提示词模板并调用LLM
         prompt = self.context_manager.get_prompt_template()
-        result = (prompt | self.llm).invoke({"input": input})
+        # 使用 format 方法将输入格式化为字符串
+        formatted_prompt = prompt.format(input=input)
+        result = self.llm.invoke(formatted_prompt)
 
         # 添加助手回复到历史记录
         self.context_manager.after_add_user_message(input)
@@ -212,10 +214,12 @@ class RagRobotLLM:
 
         # 获取包含历史记录的提示词模板
         prompt = self.context_manager.get_prompt_template()
+        # 使用 format 方法将输入格式化为字符串
+        formatted_prompt = prompt.format(input=input)
 
         response_chunks = []
         # 调用LLM的流式生成方法
-        for chunk in (prompt | self.llm).stream({"input": input}):
+        for chunk in self.llm.stream(formatted_prompt):
             response_chunks.append(chunk)
             yield chunk
 
@@ -237,8 +241,10 @@ class RagRobotLLM:
 
         # 获取包含历史记录的提示词模板
         prompt = self.context_manager.get_prompt_template()
+        # 使用 format 方法将输入格式化为字符串
+        formatted_prompt = prompt.format(input=input)
 
-        response = await (prompt | self.llm).ainvoke({"input": input})
+        response = await self.llm.ainvoke(formatted_prompt)
 
         # 添加助手回复到历史记录
         self.context_manager.after_add_user_message(input)
@@ -260,10 +266,12 @@ class RagRobotLLM:
 
         # 获取包含历史记录的提示词模板
         prompt = self.context_manager.get_prompt_template()
+        # 使用 format 方法将输入格式化为字符串
+        formatted_prompt = prompt.format(input=input)
 
         response_chunks = []
         # 调用LLM的异步流式生成方法
-        async for chunk in (prompt | self.llm).astream({"input": input}):
+        async for chunk in self.llm.astream(formatted_prompt):
             response_chunks.append(chunk)
             yield chunk
 

@@ -23,8 +23,8 @@ class ContextManager:
         self.prompt_manager = prompt_manager
         self.template_id = template_id
         self.max_history_length = (
-            max_history_length * 2
-        )  # 每轮对话包含用户和助手两条消息
+            max_history_length * 2  # 每轮对话包含用户和助手两条消息
+        )
         self.history: List[HumanMessage | AIMessage] = []
 
         # 获取基础模板

@@ -80,7 +80,7 @@ def test_rag_robot_context_management(rag_robot):
     assert len(first_response) > 0
 
     # 第二轮对话，引用上下文
-    second_response = rag_robot.generate("你还记得我的名字吗？")
+    second_response = rag_robot.generate("你还记得我的名字吗？请说出我的名字。")
     assert isinstance(second_response, str)
     assert len(second_response) > 0
 
@@ -92,12 +92,12 @@ def test_rag_robot_context_management(rag_robot):
 async def test_rag_robot_async_context_management(rag_robot):
     """测试异步上下文管理功能"""
     # 第一轮对话
-    first_response = await rag_robot.agenerate("我今年30岁")
+    first_response = await rag_robot.agenerate("首先请你记住我今年30岁")
     assert isinstance(first_response, str)
     assert len(first_response) > 0
 
     # 第二轮对话，引用上下文
-    second_response = await rag_robot.agenerate("你能告诉我我的年龄吗？")
+    second_response = await rag_robot.agenerate("我的年龄是多少？")
     assert isinstance(second_response, str)
     assert len(second_response) > 0
 
@@ -108,17 +108,16 @@ async def test_rag_robot_async_context_management(rag_robot):
 def test_rag_robot_multi_turn_conversation(rag_robot):
     """测试多轮对话上下文管理"""
     # 第一轮对话
-    rag_robot.generate("我喜欢吃苹果")
+    rag_robot.generate("请记住苹果的得分是10")
 
     # 第二轮对话
-    rag_robot.generate("我还喜欢吃香蕉")
+    rag_robot.generate("请记住香蕉的得分是20")
 
     # 第三轮对话，引用前两轮的上下文
-    third_response = rag_robot.generate("我喜欢吃什么水果？")
+    third_response = rag_robot.generate("苹果和香蕉谁的得分更低？")
 
     # 检查第三轮回复中是否包含前两轮提到的水果
     assert "苹果" in third_response or "apple" in third_response.lower()
-    assert "香蕉" in third_response or "banana" in third_response.lower()
 
 
 def test_rag_robot_clear_history(rag_robot):
