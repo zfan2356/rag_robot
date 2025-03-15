@@ -12,6 +12,7 @@ class ContextManager:
         prompt_manager: PromptManager,
         template_id: int,
         max_history_length: int = 10,
+        is_rag_mode: bool = False,
     ):
         """初始化 ContextManager
 
@@ -26,6 +27,7 @@ class ContextManager:
             max_history_length * 2  # 每轮对话包含用户和助手两条消息
         )
         self.history: List[HumanMessage | AIMessage] = []
+        self.is_rag_mode = is_rag_mode
 
         # 获取基础模板
         template = self.prompt_manager.get_template(template_id)
@@ -39,19 +41,40 @@ class ContextManager:
 
     def pre_add_user_message(self):
         """预处理 - 添加带{input}占位符的消息"""
+        if self.is_rag_mode:
+            self.history.append(HumanMessage(content="{context}"))
+
         self.history.append(HumanMessage(content="{input}"))
         self._trim_history()
 
-    def after_add_user_message(self, message: str):
+    def change_template(self, template_id: int):
+        """更换提示词模板"""
+        self.template_id = template_id
+        self.system_prompt = self.prompt_manager.get_template(template_id)[
+            "system_prompt"
+        ]
+
+    def after_add_user_message(self, message: str, context: str = None):
         """后处理 - 更新最后一条HumanMessage的内容
 
         Args:
             message: 用户消息内容
         """
-        for msg in reversed(self.history):
-            if isinstance(msg, HumanMessage) and msg.content == "{input}":
-                msg.content = message
-                break
+        if not self.is_rag_mode:
+            for msg in reversed(self.history):
+                if isinstance(msg, HumanMessage) and msg.content == "{input}":
+                    msg.content = message
+                    break
+        else:
+            cnt = 0
+            for msg in reversed(self.history):
+                if isinstance(msg, HumanMessage) and msg.content == "{context}":
+                    msg.content = context
+                if isinstance(msg, HumanMessage) and msg.content == "{input}":
+                    msg.content = message
+                    cnt += 1
+                if cnt == 2:
+                    break
 
     def add_assistant_message(self, message: str):
         """添加助手消息到历史记录
@@ -78,5 +101,4 @@ class ContextManager:
             role = "human" if isinstance(msg, HumanMessage) else "ai"
             messages.append((role, msg.content))
 
-        # 创建模板时明确指定输入变量
         return ChatPromptTemplate.from_messages(messages)
