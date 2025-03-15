@@ -164,6 +164,12 @@ class TestRagChain(unittest.TestCase):
         )
         logger.info(f"test_chain_components result: {result}")
 
+    def test_stream_pass(self):
+        result = self.rag_chain.test_chain_stream_components(
+            "什么是深度学习？它与机器学习有什么关系？"
+        )
+        logger.info(f"test_chain_components result: {result}")
+
     def test_invoke(self):
         """测试执行RAG链功能"""
         # 查询文本

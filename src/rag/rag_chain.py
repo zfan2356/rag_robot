@@ -96,17 +96,6 @@ class RagChain:
         """
         # 添加日志记录输入类型和结构
         logger.debug(f"_format_context 接收到输入类型: {type(inputs)}")
-
-        # 确保输入是字典
-        if not isinstance(inputs, dict):
-            logger.warning(f"_format_context 接收到非字典输入: {inputs}")
-            # 尝试转换为字典
-            try:
-                inputs = {"context": [], "input": str(inputs)}
-            except Exception as e:
-                logger.error(f"无法将输入转换为字典: {e}")
-                return {"context": "无法处理的输入", "input": ""}
-
         # 获取上下文文档和问题
         context_docs = inputs.get("context", [])
         question = inputs.get("input", "")
@@ -149,20 +138,7 @@ class RagChain:
         Returns:
             str: 回答文本
         """
-        # 如果指定了文档ID，则使用自定义检索
-        if False:
-            # 获取相关文档
-            context_docs = self.retriever.invoke(query, doc_ids=doc_ids)
-
-            # 格式化输入
-            inputs = self._format_context({"context": context_docs, "input": query})
-
-            # 执行LLM调用
-            response = self.prompt.invoke(inputs) | self.llm | StrOutputParser()
-            return response
-        else:
-            # 使用标准链执行
-            return self.chain.invoke(query, doc_ids=doc_ids)
+        return self.chain.invoke(query, doc_ids=doc_ids)
 
     def stream(
         self, query: str, doc_ids: Optional[List[int]] = None
@@ -176,22 +152,9 @@ class RagChain:
         Returns:
             Generator[str, None, None]: 回答文本生成器
         """
-        # 如果指定了文档ID，则使用自定义检索
-        if False:
-            # 获取相关文档
-            context_docs = self.retriever.get_relevant_documents(query, doc_ids=doc_ids)
-
-            # 格式化输入
-            inputs = self._format_context({"context": context_docs, "input": query})
-
-            # 执行LLM流式调用
-            for chunk in self.prompt.invoke(inputs) | self.llm.stream():
-                yield chunk
-        else:
-            # 使用标准链流式执行
-            config = RunnableConfig({"callbacks": []})
-            for chunk in self.chain.stream(query, config=config):
-                yield chunk
+        config = RunnableConfig({"callbacks": []})
+        for chunk in self.chain.stream(query, config=config):
+            yield chunk
 
     def get_relevant_documents(
         self, query: str, doc_ids: Optional[List[int]] = None
@@ -258,6 +221,81 @@ class RagChain:
             logger.info("测试完整链...")
             try:
                 chain_result = self.chain.invoke(query)
+                results["chain"] = {
+                    "success": True,
+                    "result_preview": (
+                        chain_result[:100] + "..." if chain_result else None
+                    ),
+                }
+                logger.info("完整链测试成功")
+            except Exception as e:
+                results["chain"] = {"success": False, "error": str(e)}
+                logger.error(f"完整链测试失败: {e}")
+
+        except Exception as e:
+            logger.error(f"测试过程中出错: {e}")
+            results["error"] = str(e)
+
+        return results
+
+    def test_chain_stream_components(self, query: str = "测试查询") -> Dict[str, Any]:
+        """测试链的各个组件是否正常工作
+
+        Args:
+            query: 测试查询文本
+
+        Returns:
+            Dict[str, Any]: 测试结果
+        """
+        results = {}
+
+        try:
+            # 测试检索器
+            logger.info("测试检索器...")
+            docs = self.retriever.get_relevant_documents(query)
+            results["retriever"] = {
+                "success": True,
+                "docs_count": len(docs),
+                "first_doc": docs[0].page_content[:100] + "..." if docs else None,
+            }
+            logger.info(f"检索器测试成功，找到 {len(docs)} 个文档")
+
+            # 测试格式化
+            logger.info("测试格式化方法...")
+            formatted = self._format_context({"context": docs, "input": query})
+            results["format_context"] = {
+                "success": True,
+                "context_length": len(formatted["context"]),
+                "context_preview": (
+                    formatted["context"][:100] + "..." if formatted["context"] else None
+                ),
+            }
+            logger.info("格式化方法测试成功")
+
+            # 测试LLM
+            logger.info("测试LLM...")
+            try:
+                llm_result = ""
+                for chunk in self.llm.stream(formatted):
+                    llm_result += chunk
+                    print(chunk, end="", flush=True)
+
+                results["llm"] = {
+                    "success": True,
+                    "result_preview": llm_result[:100] + "..." if llm_result else None,
+                }
+                logger.info("LLM测试成功")
+            except Exception as e:
+                results["llm"] = {"success": False, "error": str(e)}
+                logger.error(f"LLM测试失败: {e}")
+
+            # 测试完整链
+            logger.info("测试完整链...")
+            try:
+                chain_result = ""
+                for chunk in self.chain.stream(query):
+                    chain_result += chunk
+                    print(chunk, end="", flush=True)
                 results["chain"] = {
                     "success": True,
                     "result_preview": (
