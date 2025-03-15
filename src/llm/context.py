@@ -1,15 +1,16 @@
+import logging
 from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from src.llm.prompt import PromptManager
-import logging
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 class ContextManager:
     def __init__(
@@ -47,7 +48,9 @@ class ContextManager:
     def pre_add_user_message(self):
         """预处理 - 添加带{input}占位符的消息"""
         if self.is_rag_mode:
-            self.history.append(HumanMessage(content="以下是一些参考文档信息:\n{context}"))
+            self.history.append(
+                HumanMessage(content="以下是一些参考文档信息:\n{context}")
+            )
 
         self.history.append(HumanMessage(content="请回答我的问题：{input}"))
         self._trim_history()
@@ -80,7 +83,7 @@ class ContextManager:
                 if isinstance(msg, HumanMessage) and msg.content.endswith("{input}"):
                     msg.content = msg.content.replace("{input}", message)
                     cnt += 1
-                    
+
                 if cnt == 2:
                     break
 

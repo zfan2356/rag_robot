@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, AsyncGenerator, Generator, List, Optional
 
 import requests
@@ -13,12 +14,12 @@ from pydantic import BaseModel, Field, model_validator
 from src.config import ModelConfig, ModelConfigManager
 from src.llm.context import ContextManager
 from src.llm.prompt import PromptManager
-import logging
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 class LocalBaseLLM(BaseLLM):
     base_url: str = Field(
@@ -196,11 +197,11 @@ class RagRobotLLM(BaseLLM):
             self.context_manager.after_add_user_message(prompt, context)
         else:
             self.context_manager.after_add_user_message(prompt)
-            
+
         self.context_manager.add_assistant_message(result)
 
         generations.append([Generation(text=result)])
-            
+
         return LLMResult(generations=generations)
 
     def invoke(
@@ -229,7 +230,7 @@ class RagRobotLLM(BaseLLM):
             context = input.get("context", "")
         else:
             raise ValueError(f"不支持的输入类型: {type(input)}")
-        
+
         # 生成响应
         result = None
         if not self.context_manager.is_rag_mode:
