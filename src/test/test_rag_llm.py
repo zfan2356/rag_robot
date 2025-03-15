@@ -51,9 +51,10 @@ def test_rag_robot_stream_generate(rag_robot):
     """测试流式生成响应"""
     # 测试流式生成
     chunks = []
-    for chunk in rag_robot.stream_generate("你好"):
+    for chunk in rag_robot.stream("你好"):
         assert isinstance(chunk, str)
         chunks.append(chunk)
+        print(chunk, end="", flush=True)
 
     assert len(chunks) > 0
     full_response = "".join(chunks)
@@ -64,7 +65,8 @@ def test_rag_robot_stream_generate(rag_robot):
 async def test_rag_robot_agenerate(rag_robot):
     """测试异步生成响应"""
     # 测试异步生成
-    response = await rag_robot.agenerate("你好")
+    response = await rag_robot.ainvoke("你好")
+    print(response)
     assert isinstance(response, str)
     assert len(response) > 0
 
@@ -74,9 +76,10 @@ async def test_rag_robot_astream_generate(rag_robot):
     """测试异步流式生成响应"""
     # 测试异步流式生成
     chunks = []
-    async for chunk in rag_robot.astream_generate("你好"):
+    async for chunk in rag_robot.astream("你好"):
         assert isinstance(chunk, str)
         chunks.append(chunk)
+        print(chunk, end="", flush=True)
 
     assert len(chunks) > 0
     full_response = "".join(chunks)

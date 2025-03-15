@@ -240,16 +240,46 @@ class RagRobotLLM(BaseLLM):
         return result.generations[0][0].text
 
     def stream(
-        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
+        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
     ) -> Generator[str, None, None]:
         """实现流式生成方法"""
+        if hasattr(input, "messages"):
+            # 处理 ChatPromptValue 类型的输入
+            messages = input.messages
+            # 提取最后一条人类消息作为输入
+            for msg in reversed(messages):
+                if isinstance(msg, HumanMessage):
+                    prompt = msg.content
+                    break
+            else:
+                prompt = messages[-1].content if messages else ""
+        elif isinstance(input, str):
+            prompt = input
+        elif isinstance(input, dict):
+            # 处理字典类型输入，特别是从 _format_context 传递过来的
+            # 优先使用 input 字段，如果没有则尝试使用 question 字段
+            prompt = input.get("input", input.get("question", ""))
+
+            # 如果有上下文信息，将其添加到提示中
+            context = input.get("context", "")
+        else:
+            raise ValueError(f"不支持的输入类型: {type(input)}")
+
         # 添加用户输入到历史记录
         self.context_manager.pre_add_user_message()
 
         # 获取包含历史记录的提示词模板
         template = self.context_manager.get_prompt_template()
         # 使用 format 方法将输入格式化为字符串
-        formatted_prompt = template.format(input=input)
+        formatted_prompt = ""
+        # 使用 format 方法将输入格式化为字符串
+        if not self.context_manager.is_rag_mode:
+            formatted_prompt = template.format(input=prompt)
+        else:
+            formatted_prompt = template.format(
+                context=context,
+                input=prompt,
+            )
 
         response_chunks = []
         # 调用底层LLM的流式生成方法
@@ -258,7 +288,10 @@ class RagRobotLLM(BaseLLM):
             yield chunk
 
         # 添加用户输入和完整的助手回复到历史记录
-        self.context_manager.after_add_user_message(input)
+        if self.context_manager.is_rag_mode:
+            self.context_manager.after_add_user_message(prompt, context)
+        else:
+            self.context_manager.after_add_user_message(prompt)
         self.context_manager.add_assistant_message("".join(response_chunks))
 
     async def ainvoke(
@@ -276,17 +309,6 @@ class RagRobotLLM(BaseLLM):
                     break
             else:
                 prompt = messages[-1].content if messages else ""
-        elif isinstance(input, (list, tuple)) and all(
-            isinstance(m, BaseMessage) for m in input
-        ):
-            # 处理消息列表
-            # 提取最后一条人类消息作为输入
-            for msg in reversed(input):
-                if isinstance(msg, HumanMessage):
-                    prompt = msg.content
-                    break
-            else:
-                prompt = input[-1].content if input else ""
         elif isinstance(input, str):
             prompt = input
         elif isinstance(input, dict):
@@ -296,14 +318,60 @@ class RagRobotLLM(BaseLLM):
 
             # 如果有上下文信息，将其添加到提示中
             context = input.get("context", "")
-            if context:
-                # 如果是 RAG 模式，上下文已经由 ContextManager 处理
-                # 这里只需要确保 prompt 包含用户的问题
-                if (
-                    not hasattr(self.context_manager, "is_rag_mode")
-                    or not self.context_manager.is_rag_mode
-                ):
-                    prompt = f"上下文信息:\n{context}\n\n问题: {prompt}"
+        else:
+            raise ValueError(f"不支持的输入类型: {type(input)}")
+
+        self.context_manager.pre_add_user_message()
+
+        # 获取包含历史记录的提示词模板
+        template = self.context_manager.get_prompt_template()
+        formatted_prompt = ""
+        # 使用 format 方法将输入格式化为字符串
+        if not self.context_manager.is_rag_mode:
+            formatted_prompt = template.format(input=prompt)
+        else:
+            formatted_prompt = template.format(
+                context=context,
+                input=prompt,
+            )
+
+        # 调用底层LLM
+        response = await self.llm.ainvoke(formatted_prompt, **kwargs)
+
+        # 添加用户输入和助手回复到历史记录
+        # 添加用户输入和助手回复到历史记录
+        if self.context_manager.is_rag_mode:
+            self.context_manager.after_add_user_message(prompt, context)
+        else:
+            self.context_manager.after_add_user_message(prompt)
+
+        self.context_manager.add_assistant_message(response)
+
+        return response
+
+    async def astream(
+        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
+    ) -> AsyncGenerator[str, None]:
+        """实现异步流式生成方法"""
+        if hasattr(input, "messages"):
+            # 处理 ChatPromptValue 类型的输入
+            messages = input.messages
+            # 提取最后一条人类消息作为输入
+            for msg in reversed(messages):
+                if isinstance(msg, HumanMessage):
+                    prompt = msg.content
+                    break
+            else:
+                prompt = messages[-1].content if messages else ""
+        elif isinstance(input, str):
+            prompt = input
+        elif isinstance(input, dict):
+            # 处理字典类型输入，特别是从 _format_context 传递过来的
+            # 优先使用 input 字段，如果没有则尝试使用 question 字段
+            prompt = input.get("input", input.get("question", ""))
+
+            # 如果有上下文信息，将其添加到提示中
+            context = input.get("context", "")
         else:
             raise ValueError(f"不支持的输入类型: {type(input)}")
 
@@ -313,37 +381,27 @@ class RagRobotLLM(BaseLLM):
         # 获取包含历史记录的提示词模板
         template = self.context_manager.get_prompt_template()
         # 使用 format 方法将输入格式化为字符串
-        formatted_prompt = template.format(input=prompt)
-
-        # 调用底层LLM
-        response = await self.llm.ainvoke(formatted_prompt, **kwargs)
-
-        # 添加用户输入和助手回复到历史记录
-        self.context_manager.after_add_user_message(prompt)
-        self.context_manager.add_assistant_message(response)
-
-        return response
-
-    async def astream(
-        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
-    ) -> AsyncGenerator[str, None]:
-        """实现异步流式生成方法"""
-        # 添加用户输入到历史记录
-        self.context_manager.pre_add_user_message()
-
-        # 获取包含历史记录的提示词模板
-        template = self.context_manager.get_prompt_template()
+        formatted_prompt = ""
         # 使用 format 方法将输入格式化为字符串
-        formatted_prompt = template.format(input=input)
+        if not self.context_manager.is_rag_mode:
+            formatted_prompt = template.format(input=prompt)
+        else:
+            formatted_prompt = template.format(
+                context=context,
+                input=prompt,
+            )
 
         response_chunks = []
-        # 调用底层LLM的异步流式生成方法
-        async for chunk in self.llm.astream(formatted_prompt, **kwargs):
+        # 调用底层LLM的流式生成方法
+        for chunk in self.llm.stream(formatted_prompt, **kwargs):
             response_chunks.append(chunk)
             yield chunk
 
         # 添加用户输入和完整的助手回复到历史记录
-        self.context_manager.after_add_user_message(input)
+        if self.context_manager.is_rag_mode:
+            self.context_manager.after_add_user_message(prompt, context)
+        else:
+            self.context_manager.after_add_user_message(prompt)
         self.context_manager.add_assistant_message("".join(response_chunks))
 
     @property

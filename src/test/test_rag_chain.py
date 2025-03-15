@@ -223,22 +223,7 @@ class TestRagChain(unittest.TestCase):
     def test_update_system_prompt(self):
         """测试更新系统提示词功能"""
         # 原始系统提示词
-        original_prompt = self.rag_chain.system_prompt
-
-        # 新的系统提示词
-        new_prompt = """
-        你是一个专业的AI研究员，请根据提供的上下文信息回答用户的问题。
-        回答应该专业、准确，并引用上下文中的相关信息。
-        如果上下文信息不足以回答问题，请明确指出并建议用户提供更多信息。
-        """
-
-        # 更新系统提示词
-        self.rag_chain.update_system_prompt(new_prompt)
-
-        # 验证系统提示词已更新
-        self.assertEqual(self.rag_chain.system_prompt, new_prompt)
-
-        # 查询文本
+        self.rag_chain.update_template(2)
         query = "简要介绍一下机器学习"
 
         # 执行RAG链
@@ -253,7 +238,7 @@ class TestRagChain(unittest.TestCase):
         logger.info(f"使用新提示词的回答: {response[:100]}...")  # 只显示前100个字符
 
         # 恢复原始系统提示词
-        self.rag_chain.update_system_prompt(original_prompt)
+        self.rag_chain.update_template(1)
 
     def test_get_relevant_documents(self):
         """测试获取相关文档功能"""
