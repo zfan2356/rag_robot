@@ -28,12 +28,22 @@ def test_rag_robot_init(rag_robot):
     assert isinstance(rag_robot.context_manager, ContextManager)
     assert isinstance(rag_robot.llm, LocalBaseLLM)
 
-
 def test_rag_robot_generate(rag_robot):
     """测试普通生成响应"""
-    response = rag_robot.generate("你好")
+    response = rag_robot.invoke("你好")
     assert isinstance(response, str)
     assert len(response) > 0
+    
+    # 将响应转换为JSON字符串并写入文件
+    import json
+    import os
+    
+    output_dir = os.path.dirname(os.path.abspath(__file__))
+    output_path = os.path.join(output_dir, "output.txt")
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        json_response = json.dumps(response, ensure_ascii=False)
+        f.write(json_response)
 
 
 def test_rag_robot_stream_generate(rag_robot):

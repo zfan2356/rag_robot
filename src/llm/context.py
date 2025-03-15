@@ -4,7 +4,12 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
 from src.llm.prompt import PromptManager
+import logging
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class ContextManager:
     def __init__(
@@ -42,9 +47,9 @@ class ContextManager:
     def pre_add_user_message(self):
         """预处理 - 添加带{input}占位符的消息"""
         if self.is_rag_mode:
-            self.history.append(HumanMessage(content="{context}"))
+            self.history.append(HumanMessage(content="以下是一些参考文档信息:\n{context}"))
 
-        self.history.append(HumanMessage(content="{input}"))
+        self.history.append(HumanMessage(content="请回答我的问题：{input}"))
         self._trim_history()
 
     def change_template(self, template_id: int):
@@ -53,6 +58,7 @@ class ContextManager:
         self.system_prompt = self.prompt_manager.get_template(template_id)[
             "system_prompt"
         ]
+        self.clear_history()
 
     def after_add_user_message(self, message: str, context: str = None):
         """后处理 - 更新最后一条HumanMessage的内容
@@ -62,17 +68,19 @@ class ContextManager:
         """
         if not self.is_rag_mode:
             for msg in reversed(self.history):
-                if isinstance(msg, HumanMessage) and msg.content == "{input}":
-                    msg.content = message
+                if isinstance(msg, HumanMessage) and msg.content.endswith("{input}"):
+                    msg.content = msg.content.replace("{input}", message)
                     break
         else:
             cnt = 0
             for msg in reversed(self.history):
-                if isinstance(msg, HumanMessage) and msg.content == "{context}":
-                    msg.content = context
-                if isinstance(msg, HumanMessage) and msg.content == "{input}":
-                    msg.content = message
+                if isinstance(msg, HumanMessage) and msg.content.endswith("{context}"):
+                    msg.content = msg.content.replace("{context}", context)
                     cnt += 1
+                if isinstance(msg, HumanMessage) and msg.content.endswith("{input}"):
+                    msg.content = msg.content.replace("{input}", message)
+                    cnt += 1
+                    
                 if cnt == 2:
                     break
 
@@ -82,6 +90,7 @@ class ContextManager:
         Args:
             message: 助手消息内容
         """
+        logger.info(f"add_assistant_message: message: {message}")
         self.history.append(AIMessage(content=message))
         self._trim_history()
 

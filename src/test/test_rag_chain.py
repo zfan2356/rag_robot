@@ -159,7 +159,8 @@ class TestRagChain(unittest.TestCase):
                 logger.warning(f"删除测试文档 {doc_id} 时出错: {str(e)}")
 
     def test_pass(self):
-        self.rag_chain.test_chain_components()
+        result = self.rag_chain.test_chain_components("什么是深度学习？它与机器学习有什么关系？")
+        logger.info(f"test_chain_components result: {result}")
 
     def test_invoke(self):
         """测试执行RAG链功能"""

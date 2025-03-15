@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field, model_validator
 from src.config import ModelConfig, ModelConfigManager
 from src.llm.context import ContextManager
 from src.llm.prompt import PromptManager
+import logging
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class LocalBaseLLM(BaseLLM):
     base_url: str = Field(
@@ -129,57 +134,15 @@ class LocalBaseLLM(BaseLLM):
         return "custom_ollama"
 
     def invoke(
-        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
+        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
     ) -> str:
         """实现 invoke 方法以支持 chain 操作"""
-        # 处理不同类型的输入
-        if hasattr(input, "messages"):
-            # 处理 ChatPromptValue 类型的输入
-            messages = input.messages
-            # 提取最后一条人类消息作为输入
-            for msg in reversed(messages):
-                if isinstance(msg, HumanMessage):
-                    prompt = msg.content
-                    break
-            else:
-                prompt = messages[-1].content if messages else ""
-        elif isinstance(input, (list, tuple)) and all(
-            isinstance(m, BaseMessage) for m in input
-        ):
-            # 处理消息列表
-            # 提取最后一条人类消息作为输入
-            for msg in reversed(input):
-                if isinstance(msg, HumanMessage):
-                    prompt = msg.content
-                    break
-            else:
-                prompt = input[-1].content if input else ""
-        elif isinstance(input, str):
-            prompt = input
-        elif isinstance(input, dict):
-            # 处理字典类型输入，特别是从 _format_context 传递过来的
-            # 优先使用 input 字段，如果没有则尝试使用 question 字段
-            prompt = input.get("input", input.get("question", ""))
-
-            # 如果有上下文信息，将其添加到提示中
-            context = input.get("context", "")
-            if context:
-                # 如果是 RAG 模式，上下文已经由 ContextManager 处理
-                # 这里只需要确保 prompt 包含用户的问题
-                if (
-                    not hasattr(self.context_manager, "is_rag_mode")
-                    or not self.context_manager.is_rag_mode
-                ):
-                    prompt = f"上下文信息:\n{context}\n\n问题: {prompt}"
-        else:
-            raise ValueError(f"不支持的输入类型: {type(input)}")
-
         # 生成响应
-        result = self._generate([prompt], **kwargs)
+        result = self._generate([input], **kwargs)
         return result.generations[0][0].text
 
     async def ainvoke(
-        self, input: Any, config: Optional[RunnableConfig] = None, **kwargs
+        self, input: str, config: Optional[RunnableConfig] = None, **kwargs
     ) -> str:
         """实现异步 invoke 方法"""
         return self.invoke(input, config, **kwargs)
@@ -204,31 +167,40 @@ class RagRobotLLM(BaseLLM):
 
     def _generate(
         self,
-        prompts: List[str],
+        prompt: str,
+        context: str = None,
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> LLMResult:
         """实现 _generate 方法以支持 BaseLLM 接口"""
         generations = []
-        for prompt in prompts:
-            # 添加用户输入到历史记录
-            self.context_manager.pre_add_user_message()
+        self.context_manager.pre_add_user_message()
 
-            # 获取包含历史记录的提示词模板
-            template = self.context_manager.get_prompt_template()
-            # 使用 format 方法将输入格式化为字符串
+        # 获取包含历史记录的提示词模板
+        template = self.context_manager.get_prompt_template()
+        formatted_prompt = ""
+        # 使用 format 方法将输入格式化为字符串
+        if not self.context_manager.is_rag_mode:
             formatted_prompt = template.format(input=prompt)
+        else:
+            formatted_prompt = template.format(
+                context=context,
+                input=prompt,
+            )
 
-            # 调用底层LLM
-            result = self.llm.invoke(formatted_prompt)
+        result = self.llm.invoke(formatted_prompt)
 
-            # 添加用户输入和助手回复到历史记录
+        # 添加用户输入和助手回复到历史记录
+        if self.context_manager.is_rag_mode:
+            self.context_manager.after_add_user_message(prompt, context)
+        else:
             self.context_manager.after_add_user_message(prompt)
-            self.context_manager.add_assistant_message(result)
+            
+        self.context_manager.add_assistant_message(result)
 
-            generations.append([Generation(text=result)])
-
+        generations.append([Generation(text=result)])
+            
         return LLMResult(generations=generations)
 
     def invoke(
@@ -246,17 +218,6 @@ class RagRobotLLM(BaseLLM):
                     break
             else:
                 prompt = messages[-1].content if messages else ""
-        elif isinstance(input, (list, tuple)) and all(
-            isinstance(m, BaseMessage) for m in input
-        ):
-            # 处理消息列表
-            # 提取最后一条人类消息作为输入
-            for msg in reversed(input):
-                if isinstance(msg, HumanMessage):
-                    prompt = msg.content
-                    break
-            else:
-                prompt = input[-1].content if input else ""
         elif isinstance(input, str):
             prompt = input
         elif isinstance(input, dict):
@@ -266,19 +227,15 @@ class RagRobotLLM(BaseLLM):
 
             # 如果有上下文信息，将其添加到提示中
             context = input.get("context", "")
-            if context:
-                # 如果是 RAG 模式，上下文已经由 ContextManager 处理
-                # 这里只需要确保 prompt 包含用户的问题
-                if (
-                    not hasattr(self.context_manager, "is_rag_mode")
-                    or not self.context_manager.is_rag_mode
-                ):
-                    prompt = f"上下文信息:\n{context}\n\n问题: {prompt}"
         else:
             raise ValueError(f"不支持的输入类型: {type(input)}")
-
+        
         # 生成响应
-        result = self._generate([prompt], **kwargs)
+        result = None
+        if not self.context_manager.is_rag_mode:
+            result = self._generate(prompt, **kwargs)
+        else:
+            result = self._generate(prompt, context, **kwargs)
         return result.generations[0][0].text
 
     def stream(
