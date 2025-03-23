@@ -383,7 +383,7 @@ def main():
                 refresh_btn = gr.Button("刷新下拉菜单")
 
             with gr.Row():
-                docs_retriever = gr.Markdown()
+                docs_retriever = gr.Text()
 
             # 设置事件处理
             logger.info("正在设置事件处理...")
