@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -14,6 +16,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# 设置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -31,11 +37,24 @@ class Document(Base):
 
 
 class DocumentDAO:
-    def __init__(self, db_url: str = "mysql+pymysql://root:123456@localhost/rag_robot"):
+    def __init__(self):
         """初始化数据访问对象"""
-        self.engine = create_engine(db_url)
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        try:
+            # 从环境变量获取数据库配置
+            db_host = os.getenv("MYSQL_HOST", "localhost")
+            db_user = os.getenv("MYSQL_USER", "root")
+            db_password = os.getenv("MYSQL_PASSWORD", "123456")
+            db_name = os.getenv("MYSQL_DATABASE", "rag_robot")
+
+            db_url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}"
+            logger.info(f"Connecting to database at {db_host}")
+            self.engine = create_engine(db_url)
+            Base.metadata.create_all(self.engine)
+            self.Session = sessionmaker(bind=self.engine)
+            logger.info("Successfully initialized database connection")
+        except Exception as e:
+            logger.error(f"Failed to initialize database connection: {str(e)}")
+            raise
 
     def create(
         self,
@@ -173,12 +192,16 @@ class DocumentDAO:
 
     def get_document_count(self) -> Dict[str, int]:
         """获取文档统计信息"""
+        logger.info("Getting document count")
         session = self.Session()
         try:
             total_count = session.query(Document).count()
-
+            logger.info(f"Document count: {total_count}")
             return {
                 "total": total_count,
             }
+        except Exception as e:
+            logger.error(f"Error getting document count: {str(e)}")
+            raise
         finally:
             session.close()

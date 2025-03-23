@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from starlette.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException
 
 from src.bot_app.schemas import *
 from src.bot_app.utils import get_logger

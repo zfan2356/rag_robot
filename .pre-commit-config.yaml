@@ -15,9 +15,3 @@ repos:
     rev: 24.8.0
     hooks:
       - id: black
-  - repo: https://github.com/doublify/pre-commit-clang-format
-    rev: 62302476d0da01515660132d76902359bed0f782
-    hooks:
-      - id: clang-format
-        files: \.(c|cc|cxx|cpp|frag|glsl|h|hpp|hxx|ih|ispc|ipp|java|js|m|mm|proto|vert|cu)$
-        exclude: ^(3rd|doc)\/

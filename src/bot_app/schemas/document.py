@@ -1,56 +1,54 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
 
 class DocumentBase(BaseModel):
     """文档基础模型"""
 
-    doc: str = Field(..., description="文档内容")
-    title: Optional[str] = Field(None, description="文档标题")
+    title: Optional[str] = None
+    doc: str
 
 
 class DocumentCreate(DocumentBase):
-    """创建文档的请求模型"""
+    """创建文档请求模型"""
 
     pass
 
 
 class DocumentUpdate(BaseModel):
-    """更新文档的请求模型"""
+    """更新文档请求模型"""
 
-    doc: Optional[str] = Field(None, description="文档内容")
-    title: Optional[str] = Field(None, description="文档标题")
+    title: Optional[str] = None
+    doc: Optional[str] = None
 
 
 class DocumentResponse(DocumentBase):
-    """文档的响应模型"""
+    """文档响应模型"""
 
-    id: int = Field(..., description="文档ID")
-    created_at: datetime = Field(..., description="创建时间")
-    updated_at: datetime = Field(..., description="更新时间")
+    id: int
+    created_at: datetime
+    updated_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={datetime: lambda dt: dt.isoformat()}
-    )
+    class Config:
+        from_attributes = True
 
 
 class DocumentPreviewResponse(BaseModel):
-    """文档预览的响应模型"""
+    """文档预览响应模型"""
 
-    id: int = Field(..., description="文档ID")
-    title: Optional[str] = Field(None, description="文档标题")
-    doc_preview: str = Field(..., description="文档内容预览")
-    created_at: datetime = Field(..., description="创建时间")
-    updated_at: datetime = Field(..., description="更新时间")
+    id: int
+    title: Optional[str] = None
+    doc_preview: str
+    created_at: datetime
+    updated_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True, json_encoders={datetime: lambda dt: dt.isoformat()}
-    )
+    class Config:
+        from_attributes = True
 
 
 class DocumentCountResponse(BaseModel):
-    """文档统计信息的响应模型"""
+    """文档计数响应模型"""
 
-    total: int = Field(..., description="文档总数")
+    total: int
