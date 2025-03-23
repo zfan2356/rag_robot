@@ -1,9 +1,8 @@
 import logging
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from langchain_core.documents import Document as LangchainDocument
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig, RunnableMap, RunnablePassthrough
 
 from src.config import ModelConfig, ModelConfigManager
@@ -128,7 +127,9 @@ class RagChain:
 
         return {"context": formatted_context, "input": question}
 
-    def invoke(self, query: str, doc_ids: Optional[List[int]] = None) -> str:
+    def invoke(
+        self, query: str, doc_ids: Optional[List[int]] = None
+    ) -> Tuple[str, List[LangchainDocument]]:
         """执行RAG链
 
         Args:
@@ -138,7 +139,12 @@ class RagChain:
         Returns:
             str: 回答文本
         """
-        return self.chain.invoke(query, doc_ids=doc_ids)
+        return (
+            self.chain.invoke(query, doc_ids=doc_ids),
+            self._format_docs(
+                self.get_relevant_documents(query=query, doc_ids=doc_ids)
+            ),
+        )
 
     def stream(
         self, query: str, doc_ids: Optional[List[int]] = None
@@ -156,6 +162,10 @@ class RagChain:
         for chunk in self.chain.stream(query, config=config):
             yield chunk
 
+        yield "[end]"
+        rel_docs = self.get_relevant_documents(query=query, doc_ids=doc_ids)
+        yield self._format_docs(rel_docs)
+
     def get_relevant_documents(
         self, query: str, doc_ids: Optional[List[int]] = None
     ) -> List[LangchainDocument]:
@@ -169,6 +179,14 @@ class RagChain:
             List[LangchainDocument]: 相关文档列表
         """
         return self.retriever.get_relevant_documents(query, doc_ids=doc_ids)
+
+    def _format_doc(self, i: int, doc: LangchainDocument) -> str:
+        """格式化文档"""
+        return f"[文档 {i + 1}] (相关度: {doc.metadata.get('similarity', 0.0):.2f}, 来源: {doc.metadata.get('source', '未知来源')}, 标题: {doc.metadata.get('title', '无标题')})\n{doc.page_content}\n\n"
+
+    def _format_docs(self, docs: List[LangchainDocument]) -> str:
+        """格式化文档"""
+        return "\n".join(self._format_doc(i, doc) for i, doc in enumerate(docs))
 
     def test_chain_components(self, query: str = "测试查询") -> Dict[str, Any]:
         """测试链的各个组件是否正常工作

@@ -11,6 +11,9 @@ from src.dao.documents import DocumentDAO
 from src.llm.context import ContextManager
 from src.llm.llm import LocalBaseLLM, RagRobotLLM
 from src.llm.prompt import PromptManager
+from src.rag.document_store import DocumentStore
+from src.rag.rag_chain import RagChain
+from src.rag.retriever import DocumentRetriever
 
 # 配置日志
 logging.basicConfig(
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 rag_robot_llm = None
 current_template = None
 current_model = None
+rag_chain = None
 
 
 def get_all_templates() -> List[Dict]:
@@ -151,7 +155,16 @@ def create_rag_robot_llm(
         raise
 
 
-def stream_chat(message: str, history) -> Generator:
+def create_rag_chain(template_id: int = 1, model_name: str = "llama3.2:latest"):
+    """创建RAG链"""
+    retriever = DocumentRetriever(DocumentStore())
+    rag_chain = RagChain(
+        retriever=retriever, template_id=template_id, model_name=model_name
+    )
+    return rag_chain
+
+
+def stream_chat(message: str, history, docs_retriever):
     """流式对话函数
 
     Args:
@@ -161,23 +174,33 @@ def stream_chat(message: str, history) -> Generator:
     Returns:
         Generator: 生成器，用于流式返回响应
     """
-    global rag_robot_llm
+    global rag_robot_llm, rag_chain
     try:
         logger.info(f"用户输入: {message}")
 
         # 生成响应
         partial_message = ""
-        for chunk in rag_robot_llm.stream_generate(message):
-            partial_message += chunk
-            history[-1][1] = partial_message
-            yield history
+        par_docs_message = ""
+        ok = False
+        for chunk in rag_chain.stream(message):
+            if chunk == "[end]":
+                ok = True
+                continue
+            if not ok:
+                partial_message += chunk
+                history[-1][1] = partial_message
+                yield history, docs_retriever
+            else:
+                par_docs_message += chunk
+                docs_retriever = par_docs_message
+                yield history, docs_retriever
 
         logger.info(f"AI响应完成: {partial_message[:100]}...")
     except Exception as e:
         logger.error(f"流式对话时出错: {str(e)}")
         logger.error(traceback.format_exc())
         history[-1][1] = f"对话出错: {str(e)}"
-        yield history
+        yield history, docs_retriever
 
 
 def clear_history():
@@ -190,11 +213,11 @@ def clear_history():
     try:
         logger.info("清除对话历史")
         rag_robot_llm.clear_history()
-        return []
+        return [], ""
     except Exception as e:
         logger.error(f"清除对话历史时出错: {str(e)}")
         logger.error(traceback.format_exc())
-        return []
+        return [], ""
 
 
 def change_template(template_choice: str):
@@ -287,7 +310,7 @@ def update_model_dropdown():
 
 def main():
     """主函数"""
-    global rag_robot_llm, current_template, current_model
+    global rag_robot_llm, current_template, current_model, rag_chain
     try:
         logger.info("启动RAG Robot对话系统...")
 
@@ -311,6 +334,9 @@ def main():
         if current_model:
             model_name = current_model
         rag_robot_llm = create_rag_robot_llm(
+            template_id=default_template_id, model_name=model_name
+        )
+        rag_chain = create_rag_chain(
             template_id=default_template_id, model_name=model_name
         )
 
@@ -356,37 +382,50 @@ def main():
                 clear_btn = gr.Button("清除对话历史")
                 refresh_btn = gr.Button("刷新下拉菜单")
 
+            with gr.Row():
+                docs_retriever = gr.Markdown()
+
             # 设置事件处理
             logger.info("正在设置事件处理...")
-            msg2 = gr.Textbox()
+            msg2 = gr.Textbox(visible=False)
             submit_btn.click(
-                fn=lambda message, history: ("", history + [[message, ""]], message),
+                fn=lambda message, history: (
+                    "",
+                    history + [[message, ""]],
+                    message,
+                    "",
+                ),
                 inputs=[msg, chatbot],
-                outputs=[msg, chatbot, msg2],
+                outputs=[msg, chatbot, msg2, docs_retriever],
                 queue=False,
             ).then(
                 fn=stream_chat,
-                inputs=[msg2, chatbot],
-                outputs=chatbot,
+                inputs=[msg2, chatbot, docs_retriever],
+                outputs=[chatbot, docs_retriever],
                 queue=True,
             )
 
             msg.submit(
-                fn=lambda message, history: ("", history + [[message, ""]], message),
+                fn=lambda message, history: (
+                    "",
+                    history + [[message, ""]],
+                    message,
+                    "",
+                ),
                 inputs=[msg, chatbot],
-                outputs=[msg, chatbot, msg2],
+                outputs=[msg, chatbot, msg2, docs_retriever],
                 queue=False,
             ).then(
                 fn=stream_chat,
-                inputs=[msg2, chatbot],
-                outputs=chatbot,
+                inputs=[msg2, chatbot, docs_retriever],
+                outputs=[chatbot, docs_retriever],
                 queue=True,
             )
 
             clear_btn.click(
                 fn=clear_history,
                 inputs=[],
-                outputs=chatbot,
+                outputs=[chatbot, docs_retriever],
                 queue=False,
             )
 

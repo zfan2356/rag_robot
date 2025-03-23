@@ -180,11 +180,12 @@ class TestRagChain(unittest.TestCase):
 
         # 验证结果
         self.assertIsNotNone(response)
-        self.assertIsInstance(response, str)
+        self.assertIsInstance(response, tuple)
         self.assertGreater(len(response), 0)
 
         logger.info(f"RAG链执行成功，查询: '{query}'")
-        logger.info(f"回答: {response[:100]}...")  # 只显示前100个字符
+        logger.info(f"回答: {response[0][:100]}...")  # 只显示前100个字符
+        logger.info(f"相关文档: {response[1]}")
 
     def test_invoke_with_doc_ids(self):
         """测试在指定文档中执行RAG链功能"""
