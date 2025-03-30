@@ -90,8 +90,13 @@ docker exec -it mysql mysql -uroot -p123456
 
 
 ### 4 . Build ChatBot Interface
+### 4 . Build ChatBot Interface
 
-Use Gradio for rapid frontend development?
+Use Gradio for rapid frontend development and prototyping.
+
+Implement React for comprehensive CRUD (Create, Read, Update, Delete) functionality for documents, prompts, and model configurations.
+
+The Gradio interface will be embedded within the React application as an iframe at the root URL.
 
 
 ### 5. Docker
@@ -115,32 +120,28 @@ docker-compose -f docker/docker-compose.yml down
 docker-compose -f docker/docker-compose.yml down -v
 
 # create and start service
-docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml up -d --build app
 ```
 use the above commands to run container, you can run `docker ps` to check if composed container is running
 
 
-### TODO:
+### Finally: How to use?
 
-llm: 基本功能√，流式回复与普通回复√，支持 | 链式调用 √，test √
+1. start mysql docker and fast api service
 
-docker: compose √，init mysql √
+```shell
+docker-compose -f docker/docker-compose.yml up --build app
+uvicorn src.bot_app.app:app --reload
+```
 
-prompt: 链式调用√，dao层交互√， test √
+2. start gradio service
 
-docs: dao层交互 √， test √
+```shell
+python -m gr_app.web_demo
+```
 
-context: √
+3. start react frontend service
 
-RagRobotLLM: test todo
-
-fastapi：
-
-- model basic info： √
-- model conversation：√
-- prompt crud: √
-- docs crud: √
-- gradio conversation: √
-- gradio model condig/doc/prompt choose: todo
-
-RAG：todo
+```shell
+npm run dev
+```
