@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000'; // 修改为正确的API路径，移除/api前缀
+const API_BASE_URL = 'http://127.0.0.1:8000'; // 修改为正确的API路径，移除/api前缀
 
 export const apiClient = axios.create({
     baseURL: API_BASE_URL,

@@ -7,11 +7,9 @@ import {
     TableHead,
     TableRow,
     Paper,
-    IconButton,
     Typography,
     Box,
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { ModelConfig } from '../api/models';
 
 interface ModelListProps {
@@ -27,9 +25,6 @@ export const ModelList: React.FC<ModelListProps> = ({
 }) => {
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>
-                模型列表
-            </Typography>
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
@@ -38,7 +33,6 @@ export const ModelList: React.FC<ModelListProps> = ({
                             <TableCell>名称</TableCell>
                             <TableCell>描述</TableCell>
                             <TableCell>创建时间</TableCell>
-                            <TableCell>操作</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -49,22 +43,6 @@ export const ModelList: React.FC<ModelListProps> = ({
                                 <TableCell>{model.description}</TableCell>
                                 <TableCell>
                                     {new Date(model.created_at).toLocaleString()}
-                                </TableCell>
-                                <TableCell>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => onEdit(model.id)}
-                                        color="primary"
-                                    >
-                                        <EditIcon />
-                                    </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => onDelete(model.id)}
-                                        color="error"
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
                                 </TableCell>
                             </TableRow>
                         ))}

@@ -17,10 +17,12 @@ import {
   Menu as MenuIcon,
   Description as DocumentIcon,
   SmartToy as ModelIcon,
+  Chat as PromptIcon,
 } from '@mui/icons-material';
 import { useState } from 'react';
 import { Documents } from './pages/Documents';
 import { Models } from './pages/Models';
+import { Prompts } from './pages/Prompts';
 
 const drawerWidth = 240;
 
@@ -48,6 +50,12 @@ function App() {
             <ModelIcon />
           </ListItemIcon>
           <ListItemText primary="模型管理" />
+        </ListItem>
+        <ListItem button component={Link} to="/prompts">
+          <ListItemIcon>
+            <PromptIcon />
+          </ListItemIcon>
+          <ListItemText primary="提示词管理" />
         </ListItem>
       </List>
     </div>
@@ -127,6 +135,7 @@ function App() {
             <Routes>
               <Route path="/documents" element={<Documents />} />
               <Route path="/models" element={<Models />} />
+              <Route path="/prompts" element={<Prompts />} />
             </Routes>
           </Box>
         </Box>
