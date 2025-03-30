@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   AppBar,
@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { Documents } from './pages/Documents';
 import { Models } from './pages/Models';
 import { Prompts } from './pages/Prompts';
+import { GradioEmbed } from './pages/GradioEmbed';
 
 const drawerWidth = 240;
 
@@ -133,6 +134,7 @@ function App() {
           >
             <Toolbar />
             <Routes>
+              <Route path="/" element={<GradioEmbed />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/models" element={<Models />} />
               <Route path="/prompts" element={<Prompts />} />

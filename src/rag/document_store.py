@@ -39,7 +39,7 @@ class DocumentStore:
         )
 
         # 初始化文档DAO
-        self.doc_dao = DocumentDAO(db_url=db_url)
+        self.doc_dao = DocumentDAO()
 
         # 初始化文本分割器
         self.text_splitter = RecursiveCharacterTextSplitter(
