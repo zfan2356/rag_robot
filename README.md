@@ -62,15 +62,12 @@ Option 2: Custom development with LangChain:
 from langchain_ollama import ChatOllama
 from langchain_community.vectorstores import FAISS
 
-# 初始化模型
 llm = ChatOllama(model="deepseek-r1:7b", temperature=0)
 
-# 加载文档并向量化
-documents = load_your_files()  # 自定义文档加载
-embeddings = HuggingFaceEmbeddings()  # 或OllamaEmbeddings
+documents = load_your_files()
+embeddings = HuggingFaceEmbeddings()
 vectorstore = FAISS.from_documents(documents, embeddings)
 
-# 构建检索链
 retriever = vectorstore.as_retriever()
 qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
 ```
@@ -86,7 +83,6 @@ choose mysql, and create two tables:
 ```shell
 docker exec -it mysql mysql -uroot -p123456
 ```
-
 
 
 ### 4 . Build ChatBot Interface
@@ -134,14 +130,23 @@ docker-compose -f docker/docker-compose.yml up --build app
 uvicorn src.bot_app.app:app --reload
 ```
 
-2. start gradio service
+2. download ollama language models and embedding models
+```shell
+ollama pull deepseek-r1:7b
+ollama pull nomic-embed-text
+ollama pull llama3.2:latest
+```
+
+3. start gradio service
 
 ```shell
 python -m gr_app.web_demo
 ```
 
-3. start react frontend service
+4. start react frontend service
 
 ```shell
+npm install 
 npm run dev
 ```
+ß
