@@ -86,7 +86,6 @@ docker exec -it mysql mysql -uroot -p123456
 
 
 ### 4 . Build ChatBot Interface
-### 4 . Build ChatBot Interface
 
 Use Gradio for rapid frontend development and prototyping.
 
